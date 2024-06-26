@@ -14,7 +14,7 @@ mixin AudioRecorderMixin {
 
   Future<void> recordStream(AudioRecorder recorder, RecordConfig config) async {
     final path = await _getPath();
-    
+
     final file = File(path);
 
     final stream = await recorder.startStream(config);

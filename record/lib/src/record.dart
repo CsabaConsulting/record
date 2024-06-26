@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:record_platform_interface/record_platform_interface.dart';
@@ -19,12 +20,14 @@ class AudioRecorder {
   Timer? _amplitudeTimer;
   late Duration _amplitudeTimerInterval;
 
+  // Should the stream be GZip encoded / decoded
+  final bool gzip;
+
   // Recorder ID
   final String _recorderId;
   // Flag to create the recorder if needed with `_recorderId`.
   bool? _created;
-
-  AudioRecorder() : _recorderId = _uuid.v4();
+  AudioRecorder({this.gzip = false}) : _recorderId = _uuid.v4();
 
   Future<bool> _create() async {
     await RecordPlatform.instance.create(_recorderId);
@@ -36,6 +39,25 @@ class AudioRecorder {
     );
 
     return true;
+  }
+
+  Stream<Uint8List> gzipCompressStream(Stream<Uint8List> uncompressedInput) {
+    final gzipEncoder = ZLibEncoder(gzip: true);
+    final gzipStreamController = StreamController<Uint8List>();
+    final byteSink =
+        gzipEncoder.startChunkedConversion(gzipStreamController.sink);
+
+    uncompressedInput.listen(
+      byteSink.add,
+      onDone: () {
+        byteSink.close();
+        gzipStreamController.close();
+      },
+      onError: gzipStreamController.addError,
+      cancelOnError: true,
+    );
+
+    return gzipStreamController.stream;
   }
 
   /// Starts new recording session.
@@ -63,10 +85,14 @@ class AudioRecorder {
     _created ??= await _create();
     await _stopRecordStream();
 
-    final stream = await RecordPlatform.instance.startStream(
+    Stream<Uint8List> stream = await RecordPlatform.instance.startStream(
       _recorderId,
       config,
     );
+
+    if (gzip) {
+      stream = gzipCompressStream(stream);
+    }
 
     _recordStreamCtrl = StreamController.broadcast();
 

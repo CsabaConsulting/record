@@ -27,7 +27,7 @@ class AudioRecorder {
   final String _recorderId;
   // Flag to create the recorder if needed with `_recorderId`.
   bool? _created;
-  AudioRecorder({this.gzip = false}) : _recorderId = _uuid.v4();
+  AudioRecorder({this.gzip = true}) : _recorderId = _uuid.v4();
 
   Future<bool> _create() async {
     await RecordPlatform.instance.create(_recorderId);

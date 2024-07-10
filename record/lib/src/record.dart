@@ -85,14 +85,15 @@ class AudioRecorder {
     _created ??= await _create();
     await _stopRecordStream();
 
-    Stream<Uint8List> stream = await RecordPlatform.instance.startStream(
-      _recorderId,
-      config,
-    );
-
-    if (gzip) {
-      stream = gzipCompressStream(stream);
-    }
+    Stream<Uint8List> stream = gzip
+        ? gzipCompressStream(await RecordPlatform.instance.startStream(
+            _recorderId,
+            config,
+          ))
+        : await RecordPlatform.instance.startStream(
+            _recorderId,
+            config,
+          );
 
     _recordStreamCtrl = StreamController.broadcast();
 
